@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>陰極保護監測智聯網Demo版(GOAT小王滾開)</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+      #map {
+        height: 100vh;
+        width: 100vw;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+
+      .map-title {
+        position: absolute;
+        bottom: 25px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 4px 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        font-family: "Microsoft JhengHei", sans-serif;
+        font-size: 18px;
+        font-weight: bold;
+        color: #1a365d;
+        letter-spacing: 1px;
+        border: 1px solid rgba(0, 86, 179, 0.2);
+      }
+
+      .map-trademark {
+        position: absolute;
+        bottom: 25px;
+        left: 20px;
+        z-index: 1000;
+        background: rgba(26, 37, 48, 0.85);
+        color: #ffffff;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-family: "Microsoft JhengHei", sans-serif;
+        font-size: 14px;
+        letter-spacing: 1.5px;
+        font-weight: bold;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        border-left: 4px solid #3182ce;
+      }
+
+      .popup-content {
+        font-family: "Microsoft JhengHei", sans-serif;
+        min-width: 240px;
+      }
+      .header {
+        background: #f1f3f5;
+        padding: 10px;
+        border-radius: 4px;
+        border-left: 5px solid #007bff;
+        margin-bottom: 10px;
+      }
+      .header h3 {
+        margin: 0;
+        font-size: 15px;
+        color: #212529;
+      }
+      .header p {
+        margin: 4px 0 0 0;
+        font-size: 12px;
+        color: #6c757d;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .data-table td {
+        padding: 6px 0;
+        border-bottom: 1px solid #dee2e6;
+      }
+      .label {
+        color: #495057;
+      }
+      .val {
+        font-weight: bold;
+        text-align: right;
+        color: #0056b3;
+      }
+      .note-box {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #dc3545;
+        font-style: italic;
+        background: #fff3cd;
+        padding: 6px;
+        border-radius: 4px;
+        border-left: 3px solid #ffc107;
+      }
+
+      .btn-history {
+        display: block;
+        width: 100%;
+        margin-top: 12px;
+        padding: 8px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        font-family: "Microsoft JhengHei", sans-serif;
+        text-align: center;
+        transition: background 0.2s;
+      }
+      .btn-history:hover {
+        background: #0056b3;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-content {
+        background: white;
+        width: 90%;
+        max-width: 1100px;
+        height: 90vh;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: fadeIn 0.25s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.97);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .modal-header {
+        padding: 15px 25px;
+        background: #1a365d;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-header h2 {
+        margin: 0;
+        font-size: 18px;
+        font-family: "Microsoft JhengHei", sans-serif;
+      }
+      .close-btn {
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #ccc;
+        transition: color 0.2s;
+      }
+      .close-btn:hover {
+        color: white;
+      }
+
+      .modal-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        background: #f8f9fa;
+      }
+
+      .control-panel {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+        font-family: "Microsoft JhengHei", sans-serif;
+        font-size: 13px;
+        background: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        border: 1px solid #e3e6f0;
+      }
+      .control-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .control-panel select {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-weight: bold;
+        color: #1a365d;
+        background: #fff;
+      }
+
+      #chart-container {
+        width: 100%;
+        height: 320px;
+        min-height: 320px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e3e6f0;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+      .table-container {
+        flex: 1;
+        min-height: 220px;
+        max-height: 360px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e3e6f0;
+        overflow-y: auto;
+        overflow-x: auto;
+      }
+      .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Microsoft JhengHei", sans-serif;
+        font-size: 13px;
+        text-align: center;
+      }
+
+      .history-table th {
+        background: #f1f3f5;
+        color: #495057;
+        padding: 12px 10px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 2px solid #dee2e6;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+      }
+      .history-table td {
+        padding: 9px;
+        border-bottom: 1px solid #dee2e6;
+        color: #212529;
+      }
+      .history-table tr:nth-child(even) {
+        background: #f8f9fa;
+      }
+      .history-table tr:hover {
+        background: #e8f4fd;
+      }
+
+      .pagination-panel {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        padding: 8px 0;
+        font-family: "Microsoft JhengHei", sans-serif;
+        font-size: 13px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e3e6f0;
+      }
+      .pagination-panel button {
+        padding: 6px 14px;
+        border: 1px solid #cbd5e0;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        color: #4a5568;
+        transition: all 0.2s;
+      }
+      .pagination-panel button:hover:not(:disabled) {
+        background: #edf2f7;
+        border-color: #4a5568;
+        color: #1a202c;
+      }
+      .pagination-panel button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: #f7fafc;
+      }
+      #page-info {
+        font-weight: bold;
+        color: #2d3748;
+        min-width: 150px;
+        text-align: center;
+      }
+
+      .custom-pin {
+        width: 30px;
+        height: 30px;
+        border-radius: 50% 50% 50% 0;
+        position: absolute;
+        transform: rotate(-45deg);
+        left: 50%;
+        top: 50%;
+        margin: -15px 0 0 -15px;
+        border: 2px solid #fff;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+        transition: background-color 0.3s ease;
+      }
+      .custom-pin::after {
+        content: "";
+        width: 14px;
+        height: 14px;
+        margin: 8px 0 0 8px;
+        background: #e6e6e6;
+        position: absolute;
+        border-radius: 50%;
+      }
+      .pin-green {
+        background: #28a745;
+      }
+      .pin-red {
+        background: #dc3545;
+      }
+      .custom-div-icon {
+        background: none;
+        border: none;
+      }
+
+      .leaflet-control-layers {
+        font-family: "Microsoft JhengHei", sans-serif;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <div class="map-title">陰極保護監測智聯網Demo版</div> -->
+    <div class="map-trademark">🫵陰保智聯以客為尊🫱🏼‍🫲🏽<br />金茂® feat. 睦榮®</div>
+    <div id="map"></div>
+
+    <div id="historyModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-title">測站模擬歷史數據分析</h2>
+          <span class="close-btn" onclick="closeHistoryModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="control-panel">
+            <div class="control-item">
+              <label for="metric-selector"><b>📈 分析維度：</b></label>
+              <select id="metric-selector" onchange="switchChartMetric()">
+                <option value="potential">
+                  陰極保護電位 (極化 / 通電電位)
+                </option>
+                <option value="current">電流密度 (AC / DC 電流密度)</option>
+                <option value="corrosion">結構腐蝕速率 & 試片溫度</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <label for="date-selector"><b>📅 歷史時間段：</b></label>
+              <select id="date-selector" onchange="handleFilterChange()">
+                <option value="all" selected>全部歷史紀錄</option>
+                <option value="1d">最近 24 小時</option>
+                <option value="7d">最近 7 天</option>
+                <option value="30d">最近 30 天</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <label for="size-selector"><b>📄 每頁顯示筆數：</b></label>
+              <select id="size-selector" onchange="handlePageSizeChange()">
+                <option value="10">10 筆</option>
+                <option value="20" selected>20 筆</option>
+                <option value="50">50 筆</option>
+                <option value="100">100 筆</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <button
+                type="button"
+                onclick="document.getElementById('sig-uploader').click()"
+                style="
+                  padding: 6px 12px;
+                  background: #6c757d;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-weight: bold;
+                "
+              >
+                ✍️ 1. 上傳簽名圖片
+              </button>
+              <input
+                type="file"
+                id="sig-uploader"
+                accept="image/*"
+                style="display: none"
+                onchange="loadSignatureImage(event)"
+              />
+              <span
+                id="sig-status"
+                style="font-size: 12px; color: #6c757d; font-style: italic"
+                >(尚未選擇簽名)</span
+              >
+            </div>
+
+            <div class="control-item">
+              <button
+                type="button"
+                onclick="generateA4PDF()"
+                style="
+                  padding: 6px 14px;
+                  background: #28a745;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-weight: bold;
+                "
+              >
+                🖨️ 2. 輸出 A4 PDF 報表
+              </button>
+            </div>
+          </div>
+
+          <div id="chart-container"></div>
+
+          <div class="table-container">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>量測時間 (UTC)</th>
+                  <th>極化電位 (mV)</th>
+                  <th>通電電位 (mV)</th>
+                  <th>AC 密度 (A/m²)</th>
+                  <th>DC 密度 (A/m²)</th>
+                  <th>試片溫度 (°C)</th>
+                  <th>腐蝕速率 (mm/y)</th>
+                  <th>警報備註</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="pagination-panel">
+            <button id="btn-prev-page" onclick="changePage(-1)">
+              ◀ 上一頁
+            </button>
+            <span id="page-info">第 1 / 1 頁 (共 0 筆)</span>
+            <button id="btn-next-page" onclick="changePage(1)">下一頁 ▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入 ISO A4 PDF 輸出核心套件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+      const map = L.map("map").setView([23.5, 120.2], 7);
+
+      const nlscLayer = L.tileLayer(
+        "https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}",
+        {
+          attribution: "&copy; 內政部國土測繪中心 NLSC",
+          maxZoom: 20,
+        },
+      );
+
+      const nlscPhotoLayer = L.tileLayer(
+        "https://wmts.nlsc.gov.tw/wmts/PHOTO_MIX/default/GoogleMapsCompatible/{z}/{y}/{x}",
+        {
+          attribution: "&copy; 內政部國土測繪中心 NLSC",
+          maxZoom: 20,
+        },
+      );
+
+      const esriSatelliteLayer = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution: "Tiles &copy; Esri",
+          maxZoom: 19,
+        },
+      );
+
+      const googleSatelliteLayer = L.tileLayer(
+        "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        {
+          attribution: "&copy; Google",
+          maxZoom: 21,
+        },
+      );
+
+      nlscLayer.addTo(map);
+
+      const stationLayer = L.layerGroup().addTo(map);
+      const earthquakeLayer = L.layerGroup().addTo(map);
+      const rainfallLayer = L.layerGroup();
+
+      // 將多個高雄工業管線 layers 用逗號串接 (注意中間不要有空格)
+      const khIndustryPipelines = L.tileLayer.wms(
+        "https://ops.kcg.gov.tw/geoserver/wms",
+        {
+          layers:
+            "khpipe:kh_industry_v2,khpipe:industry_new,khpipe:kh_industry_ng_v2,kh_industry_other_v2,kh_industry_sewage", // 👈 這裡是高雄工業管線的圖層名稱
+          format: "image/png",
+          transparent: true,
+          opacity: 0.7,
+          zIndex: 5,
+        },
+      );
+
+      // 📍 1. 宣告中科STSP ArcGIS REST
+      const arcgisTC =
+        "https://tcroad.taichung.gov.tw/server/rest/services/jimmy_pipe103/MapServer";
+      // 📍 2. 建立 ArcGIS 動態圖層
+      const TCPipelines = L.esri.dynamicMapLayer({
+        url: arcgisTC,
+        opacity: 0.85,
+        zIndex: 5, // 確保在底圖之上，感測器 Pin 點之下
+        useCors: false, // 停用跨網域支援自動轉為JSONP
+        //f: "image",
+        // 💡 核心技巧：ArcGIS 的子圖層是用「數字 ID」控制
+        // 如果您只想顯示特定的管線（例如：0是瓦斯、2是自來水），可以這樣篩選：
+        //layers: [90,91,92,93]
+        // 如果想全開，直接把 layers 這行刪除或註解掉即可
+      });
+
+      // 📍 1. 宣告南科STSP ArcGIS REST
+      const arcgisSTSP =
+        "https://nkdig.stsp.gov.tw/server/rest/services/NK/RoadDigging_nk/MapServer";
+      // 📍 2. 建立 ArcGIS 動態圖層
+      const STSPPipelines = L.esri.dynamicMapLayer({
+        url: arcgisSTSP,
+        opacity: 0.85,
+        zIndex: 5, // 確保在底圖之上，感測器 Pin 點之下
+        useCors: true, // 啟用跨網域支援
+
+        // 💡 核心技巧：ArcGIS 的子圖層是用「數字 ID」控制
+        // 如果您只想顯示特定的管線（例如：0是瓦斯、2是自來水），可以這樣篩選：
+        // layers: [0, 2]
+        // 如果想全開，直接把 layers 這行刪除或註解掉即可
+      });
+
+      // 📍 1. 宣告屏東 ArcGIS REST
+      const arcgisPingTung =
+        "https://roadgis.pthg.gov.tw/server/rest/services/PIPE/PTPipelineMap_ok/MapServer";
+      // 📍 2. 建立 ArcGIS 動態圖層
+      const PingTungPipelines = L.esri.dynamicMapLayer({
+        url: arcgisPingTung,
+        opacity: 0.85,
+        zIndex: 5, // 確保在底圖之上，感測器 Pin 點之下
+        useCors: true, // 啟用跨網域支援
+
+        // 💡 核心技巧：ArcGIS 的子圖層是用「數字 ID」控制
+        // 如果您只想顯示特定的管線（例如：0是瓦斯、2是自來水），可以這樣篩選：
+        // layers: [0, 2]
+        // 如果想全開，直接把 layers 這行刪除或註解掉即可
+      });
+
+      // 📍 1. 高雄公開管線基底網址
+      const kcgPipeBaseUrl =
+        "https://pipegis3d.kcg.gov.tw/server/rest/services/2DPIPE/KCGPublicPipe/MapServer";
+
+      // 📍 2. 使用 L.esri.featureLayer 載入特定子圖層，並給予專屬顏色樣式
+      // 💡 加載 Layer 817 (核火工南施處之交不出去新輸氣管)
+      const kcgfuckPipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/817", // 👈 網址最後一定要加上「/子圖層編號」
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 3, // 線條粗細
+            opacity: 0.8, // 透明度
+          };
+        },
+      });
+
+      // 💡 加載 Layer 152 (興達電舊輸氣管)
+      const kcgHDPipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/152", // 👈 網址最後加上 /152
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 3,
+            opacity: 0.8,
+          };
+        },
+      });
+
+      // 💡 加載 Layer 151 (中油輸氣管)
+      const kcgCPCPipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/151", // 👈 網址最後加上 /151
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 3,
+            opacity: 0.8,
+          };
+        },
+      });
+
+      // 💡 加載 Layer 149 (大林#6輸氣管)
+      const kcgDL6Pipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/149", // 👈 網址最後加上 /149
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 3,
+            opacity: 0.8,
+          };
+        },
+      });
+
+      // 💡 加載 Layer 156 (中鋼輸氣管)
+      const kcgCSCPipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/156", // 👈 網址最後加上 /156
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 3,
+            opacity: 0.8,
+          };
+        },
+      });
+
+      // 💡 加載 Layer 153 (欣高輸氣管)
+      const kcgSGPipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/153", // 👈 網址最後加上 /153
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 2,
+            opacity: 0.8,
+          };
+        },
+      });
+
+      // 💡 加載 Layer 154 (欣雄輸氣管)
+      const kcgSSPipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/154", // 👈 網址最後加上 /154
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 2,
+            opacity: 0.8,
+          };
+        },
+      });
+
+      // 💡 加載 Layer 155 (欣南鎮氣管)
+      const kcgNCPipe = L.esri.featureLayer({
+        url: kcgPipeBaseUrl + "/155", // 👈 網址最後加上 /155
+        style: function () {
+          return {
+            color: "rgb(91, 236, 19)", // 綠色代表瓦斯/燃氣管線
+            weight: 2,
+            opacity: 0.8,
+          };
+        },
+      });
+
+      // 🌟 進階神功能：綁定點擊彈窗 (Popup)，點擊管線時會自動讀取 ArcGIS 資料庫欄位
+      kcgfuckPipe.bindPopup(function (layer) {
+        // layer.feature.properties 裡面包含了高雄市政府該管線的所有屬性
+        // 欄位名稱（如 OP_NAME, DIA）請對照 ArcGIS 網頁下方的 "Fields" 列表
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 南施處交不出去管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管線權屬：</b>${props.OP_NAME || "核火工南施處"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${"36"} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      kcgHDPipe.bindPopup(function (layer) {
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 興達電舊管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管理權責：</b>${props.OP_NAME || "台電興達"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${props.WIDTH} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      kcgCPCPipe.bindPopup(function (layer) {
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 中油天然氣管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管理權責：</b>${props.OP_NAME || "中油"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${props.WIDTH} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      kcgDL6Pipe.bindPopup(function (layer) {
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 大林電廠6號機輸氣管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管理權責：</b>${props.OP_NAME || "大林電廠"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${props.WIDTH} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      kcgCSCPipe.bindPopup(function (layer) {
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 中鋼輸氣管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管理權責：</b>${props.OP_NAME || "中鋼"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${"6"} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      kcgSGPipe.bindPopup(function (layer) {
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 欣高管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管理權責：</b>${props.OP_NAME || "欣高"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${"不一"} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      kcgSSPipe.bindPopup(function (layer) {
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 欣雄管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管理權責：</b>${props.OP_NAME || "欣雄"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${"不一"} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      kcgNCPipe.bindPopup(function (layer) {
+        const props = layer.feature.properties;
+        return `
+        <div style="font-family:'Microsoft JhengHei'; font-size:13px;">
+            <b style="color:#fd7e14;">🔥 南鎮管線資訊</b><br><hr style="margin:5px 0;">
+            <b>管理權責：</b>${props.OP_NAME || "南鎮"}<br>
+            <b>管內容物：</b>${props.SUBSTANCE || "民生氣體"}<br>
+            <b>管徑大小：</b>${"不一"} 吋<br>
+            <b>管線路徑長：</b>${props.LENGTH || "未知"} m<br>
+        </div>
+    `;
+      });
+
+      // 📍 3. 使用 LayerGroup 將多個管線打包成一個大群組，方便使用者一鍵開關
+      const kcgAllPipelines = L.layerGroup([
+        kcgfuckPipe,
+        kcgHDPipe,
+        kcgCPCPipe,
+        kcgDL6Pipe,
+        kcgCSCPipe,
+        kcgSGPipe,
+        kcgSSPipe,
+        kcgNCPipe,
+      ]);
+
+      const baseMaps = {
+        "🛰️ 衛星影像 (Esri)": esriSatelliteLayer,
+        "🛰️ 衛星影像 (Google 評估版)": googleSatelliteLayer,
+        "🗺️ 標準地圖 (NLSC)": nlscLayer,
+        "🗺️ 正射影像 (NLSC)": nlscPhotoLayer,
+      };
+
+      const overlayMaps = {
+        "🟢 腐蝕監測站": stationLayer,
+        "🔴 地震資訊(顯著)": earthquakeLayer,
+        "💧 最近1小時雨量": rainfallLayer,
+        "🚧 台中8大管線": TCPipelines,
+        "🚧 南科地下管線": STSPPipelines,
+        "🚧 高雄民生氣體管線": kcgAllPipelines,
+        "🚧 高雄工業管線": khIndustryPipelines,
+        "🚧 屏東管線": PingTungPipelines,
+      };
+
+      L.control
+        .layers(baseMaps, overlayMaps, { position: "topleft", collapsed: true })
+        .addTo(map);
+
+      // 監聽地圖的點擊事件
+      map.on("click", function (e) {
+        // 建立一個 Identify 任務
+        TCPipelines.identify()
+          .on(map) // 指定在哪個地圖上
+          .at(e.latlng) // 指定點擊的經緯度坐标
+          .layers("all") // 💡 建議改為 "all"，確保能地毯式搜出所有子圖層，避免 "visible" 狀態未同步漏掉資料
+          .run(function (error, featureCollection, response) {
+            if (error) {
+              console.error("屬性查詢失敗：", error);
+              return;
+            }
+
+            // 如果有點擊到任何管線
+            if (featureCollection && featureCollection.features && featureCollection.features.length > 0) {
+              
+              const feature = featureCollection.features[0]; // 取得點到的第一條管線
+              const props = feature.properties; // 取得欄位屬性資料包 (例如 MATERIAL, LENGTH)
+
+              // 🎯 【核心修正】在這裡抓出 ArcGIS 的「圖層標題」與「圖層 ID」
+              // 優先從 Esri Leaflet 的 feature 最外層拿，拿不到則從原始 response.results 備援拿取
+              const layerName = feature.layerName || (response.results && response.results[0] ? response.results[0].layerName : "未知圖層");
+              const layerId = feature.layerId !== undefined ? feature.layerId : (response.results && response.results[0] ? response.results[0].layerId : "");
+
+              // 💡 輸出測試：此時 layerName 就會是 "中油供氣_管線"、layerId 就會是 90
+              console.log("當前點擊的圖層 ID:", layerId);
+              console.log("當前點擊的圖層標題:", layerName);
+
+              // 將抓到的「圖層標題」動態組合進您的彈窗 HTML 中
+              let popupContent = `
+                <div style="font-family: 'Microsoft JhengHei', sans-serif; padding: 5px; min-width: 220px;">
+                  <h4 style="margin: 0 0 10px 0; color: #0056b3; border-bottom: 1px solid #ddd; padding-bottom: 5px;">⚙️ 管線屬性資訊</h4>
+                  
+                  <b>圖層來源:</b> <span style="color: #d9534f; font-weight: bold;">${layerName} (圖層ID: ${layerId})</span><br>
+                  <hr style="margin: 6px 0; border: 0; border-top: 1px dashed #ccc;">
+
+                  <b>管線類型:</b> ${props.SUBSTANCE || "未知"}<br>
+                  <b>管線長度:</b> ${props.LENGTH || "未註明"}<br>
+                  <b>材質:</b> ${props.MATERIAL || "未註明"}<br>
+                  <b>歸屬監管:</b> ${props.layerName || "台中市政府"}<br>
+                </div>
+              `;
+
+              // 在點擊位置彈出視窗
+              L.popup()
+                .setLatLng(e.latlng)
+                .setContent(popupContent)
+                .openOn(map);
+            }
+          });
+      });
+
+      let echartsInstance = null;
+      let fullHistoryData = [];
+      let filteredHistoryData = [];
+      let rainfallHistoryData = [];
+      let allRainStations = [];
+      let currentPage = 1;
+      let pageSize = 20;
+
+      fetch("/api/stations")
+        .then((res) => res.json())
+        .then((stations) => {
+          stations.forEach((st) => {
+            const isStationAlarm = st.latest_pote > 250 || st.latest_ac > 30;
+            const pinColorClass = isStationAlarm ? "pin-red" : "pin-green";
+
+            const customIcon = L.divIcon({
+              className: "custom-div-icon",
+              html: `<div class='custom-pin ${pinColorClass}'></div>`,
+              iconSize: [30, 30],
+              iconAnchor: [15, 30],
+              popupAnchor: [0, -30],
+            });
+
+            let marker = L.marker([st.lat, st.lng], { icon: customIcon }).addTo(
+              stationLayer,
+            );
+
+            marker.on("click", () => {
+              fetch(`/api/data?id=${st.id}`)
+                .then((res) => res.json())
+                .then((data) => {
+                  const isAlarm =
+                    data.polarized_potential > 250 ||
+                    data.ac_current_density > 30;
+                  const updatedColorClass = isAlarm ? "pin-red" : "pin-green";
+                  marker.setIcon(
+                    L.divIcon({
+                      className: "custom-div-icon",
+                      html: `<div class='custom-pin ${updatedColorClass}'></div>`,
+                      iconSize: [30, 30],
+                      iconAnchor: [15, 30],
+                      popupAnchor: [0, -30],
+                    }),
+                  );
+
+                  const statusLight = isAlarm ? "🔴 異常告警" : "🟢 運作正常";
+                  const alarmLegend =
+                    "<b>註記:</b><br>本網站所有腐蝕相關數據均為模擬<br>*極化電位 > -850mV/CSE<br>*極化電位 > 250mV/Zn<br>*交流電流密度 > 30 A/m²<br>以上情形為紅燈號應立即行動。<br>GOAT小王應對興達電廠LNG陸管陰極保護弊案伏法!!";
+                  const deviceNote = data.note || "無";
+                  const combinedNote = `${alarmLegend}<br><br>設備回報：${deviceNote}`;
+
+                  const html = `
+                                <div class="popup-content">
+                                    <div class="header">
+                                        <h3>${st.name}</h3>
+                                        <p>編號：${st.id} | 鄰近機關：${st.custodian}</p>
+                                    </div>
+                                    <table class="data-table">
+                                        <tr><td class="label">模擬量測時間</td><td class="val">${data.timestamp}</td></tr>
+                                        <tr>
+                                            <td class="label">保護狀態</td>
+                                            <td class="val" style="font-size: 1.1em; color: ${isAlarm ? "#dc3545" : "#28a745"};">${statusLight}</td>
+                                        </tr>
+                                        <tr><td class="label">模擬極化電位</td><td class="val" style="${data.polarized_potential > 250 ? "color: red;" : ""}">${data.polarized_potential} mV / ${data.ref_electrode}</td></tr>
+                                        <tr><td class="label">模擬通電電位</td><td class="val">${data.on_potential} mV / ${data.ref_electrode}</td></tr>
+                                        <tr><td class="label">模擬 AC 電流密度</td><td class="val" style="${data.ac_current_density > 30 ? "color: red;" : ""}">${data.ac_current_density.toFixed(2)} A/m²</td></tr>
+                                        <tr><td class="label">模擬腐蝕速率</td><td class="val">${data.corrosion_rate.toFixed(4)} mm/y</td></tr>
+                                    </table>
+                                    <div class="note-box">${combinedNote}</div>
+                                    <button class="btn-history" onclick="openHistoryModal('${st.id}', '${st.name}', ${st.lat}, ${st.lng})">📊 查看歷史趨勢圖表</button>
+                                </div>
+                            `;
+                  marker.bindPopup(html, { maxWidth: 300 }).openPopup();
+                })
+                .catch(() => {
+                  marker
+                    .bindPopup(
+                      `<b>${st.name}</b><br><button class="btn-history" onclick="openHistoryModal('${st.id}', '${st.name}', ${st.lat}, ${st.lng})">📊 查看歷史趨勢圖表</button>`,
+                      { maxWidth: 300 },
+                    )
+                    .openPopup();
+                });
+            });
+          });
+        });
+
+      fetch("earthquake_taiwan.json")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.records && data.records.Earthquake) {
+            const earthquakes = data.records.Earthquake;
+            earthquakes.forEach((eq) => {
+              const info = eq.EarthquakeInfo;
+              if (!info) return;
+              const lat = info.Epicenter
+                ? info.Epicenter.EpicenterLatitude
+                : null;
+              const lng = info.Epicenter
+                ? info.Epicenter.EpicenterLongitude
+                : null;
+              const mag = info.EarthquakeMagnitude
+                ? info.EarthquakeMagnitude.MagnitudeValue
+                : null;
+
+              let timeDisplay = info.OriginTime || "未知時間";
+              if (info.OriginTime) {
+                const tzSource =
+                  info.OriginTime.trim().replace(" ", "T") + "+08:00";
+                const eqDate = new Date(tzSource);
+                if (!isNaN(eqDate.getTime())) {
+                  timeDisplay =
+                    eqDate.toLocaleString("zh-TW", { hour12: false }) +
+                    " (在地時間)";
+                }
+              }
+
+              if (lat !== null && lng !== null) {
+                const eqMarker = L.circleMarker([lat, lng], {
+                  radius: Math.max(mag * 3, 6),
+                  fillColor: "#dc3545",
+                  color: "#ffffff",
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.7,
+                });
+                eqMarker
+                  .bindPopup(
+                    `<b>⚠️ 地震資訊</b><br>規模: ${mag}<br>時間: ${timeDisplay}`,
+                  )
+                  .addTo(earthquakeLayer);
+              }
+            });
+          }
+        });
+
+      function loadLatestRainfall() {
+        fetch("/api/rainfall/latest")
+          .then((res) => res.json())
+          .then((data) => {
+            allRainStations = data;
+            data.forEach((rs) => {
+              const radiusSize = Math.max(
+                5,
+                Math.min(25, 5 + rs.rain_val * 1.5),
+              );
+              const blueOpacity = Math.max(
+                0.3,
+                Math.min(0.8, 0.3 + rs.rain_val / 50),
+              );
+
+              const marker = L.circleMarker([rs.lat, rs.lng], {
+                radius: radiusSize,
+                fillColor: "#007bff",
+                color: "#fff",
+                weight: 1.5,
+                fillOpacity: blueOpacity,
+              }).addTo(rainfallLayer);
+
+              marker.bindPopup(
+                `<b>🌧️ ${rs.station_name} 氣象站</b><br>雨量: ${rs.rain_val} mm<br>時間: ${rs.obs_time}`,
+              );
+            });
+          })
+          .catch((err) => console.log("載入最新雨量失敗", err));
+      }
+      loadLatestRainfall();
+
+      function calcDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+
+      function openHistoryModal(stationId, stationName, stLat, stLng) {
+        document.getElementById("historyModal").style.display = "flex";
+        if (!echartsInstance)
+          echartsInstance = echarts.init(
+            document.getElementById("chart-container"),
+          );
+
+        document.getElementById("date-selector").value = "all";
+        document.getElementById("size-selector").value = "20";
+        currentPage = 1;
+        pageSize = 20;
+
+        let nearestStation = null;
+        let minDistance = 15.0;
+        allRainStations.forEach((rs) => {
+          const d = calcDistance(stLat, stLng, rs.lat, rs.lng);
+          if (d < minDistance) {
+            minDistance = d;
+            nearestStation = rs;
+          }
+        });
+
+        const fetchSensorTask = fetch(`/api/history?id=${stationId}`).then(
+          (res) => res.json(),
+        );
+        const fetchTasks = [fetchSensorTask];
+
+        if (nearestStation) {
+          document.getElementById("modal-title").innerHTML =
+            `📊 測站模擬資產分析：${stationName} (${stationId}) <span style="font-size:13px; color:#0056b3; background:#e1f0ff; padding:3px 10px; border-radius:12px; margin-left:15px;">🌧️ 已疊加 ${nearestStation.station_name} 氣象站降雨資訊 (距 ${minDistance.toFixed(1)}km)</span>`;
+
+          const fetchRainTask = fetch(
+            `/api/history/rainfall?id=${nearestStation.station_id}`,
+          )
+            .then((res) => res.json())
+            .catch(() => []);
+          fetchTasks.push(fetchRainTask);
+        } else {
+          document.getElementById("modal-title").innerText =
+            `📊 測站模擬資產分析：${stationName} (${stationId}) 的歷史監測區間`;
+        }
+
+        Promise.all(fetchTasks).then((results) => {
+          const rawSensorData = results[0];
+          rainfallHistoryData = results[1] || [];
+
+          // 🌟 步驟一：預先處理所有雨量數據的絕對時間戳記
+          const rainList = rainfallHistoryData.map((r) => {
+            let rt = r.obs_time.trim().replace(/\//g, "-").replace(" ", "T");
+            if (!rt.endsWith("Z") && !rt.includes("+")) rt += "Z";
+            return {
+              timeMs: new Date(rt).getTime(),
+              val: parseFloat(r.precipitation) || 0,
+            };
+          });
+
+          // 🌟 步驟二：建構 fullHistoryData，同時執行「雨量對齊」與「物理模擬」
+          fullHistoryData = rawSensorData.map((d) => {
+            let updatedRow = { ...d };
+
+            // 1. 轉換感測器時間為絕對毫秒
+            let safeTs = d.timestamp
+              .trim()
+              .replace(/\//g, "-")
+              .replace(" ", "T");
+            if (!safeTs.endsWith("Z") && !safeTs.includes("+")) {
+              safeTs += "Z";
+            }
+            const sensorTimeMs = new Date(safeTs).getTime();
+
+            // 2. 最近鄰演算法尋找最接近的雨量
+            let closestRain = 0;
+            let minDiff = Infinity;
+            rainList.forEach((rain) => {
+              const diff = Math.abs(rain.timeMs - sensorTimeMs);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closestRain = rain.val;
+              }
+            });
+
+            // 若超過兩小時無資料，視為雨量0
+            const finalRainVal = minDiff <= 7200000 ? closestRain : 0;
+
+            // 儲存對齊好的雨量，供 ECharts 後續直接取用
+            updatedRow.aligned_rain = finalRainVal;
+
+            // 3. 🎯 核心功能：時雨量大於 5mm，觸發物理模擬
+            if (finalRainVal > 5) {
+              const multiplier = 1.1;
+              const adder = 0.05 * finalRainVal;
+
+              updatedRow.ac_current_density =
+                d.ac_current_density * multiplier + adder;
+              updatedRow.dc_current_density =
+                d.dc_current_density * multiplier + adder;
+
+              const simNote = `🌧️ 大雨模擬啟動 (I*${multiplier} + ${adder.toFixed(2)})`;
+              if (
+                !updatedRow.note ||
+                updatedRow.note === "無" ||
+                updatedRow.note === "null"
+              ) {
+                updatedRow.note = simNote;
+              } else if (!updatedRow.note.includes("大雨模擬啟動")) {
+                updatedRow.note += ` | ${simNote}`;
+              }
+            }
+
+            return updatedRow;
+          });
+
+          handleFilterChange();
+        });
+      }
+
+      function handleFilterChange() {
+        const dateRange = document.getElementById("date-selector").value;
+        if (dateRange === "all") {
+          filteredHistoryData = [...fullHistoryData];
+        } else {
+          const now = new Date();
+          let timeLimit = new Date();
+
+          if (dateRange === "1d") timeLimit.setHours(now.getHours() - 24);
+          else if (dateRange === "7d") timeLimit.setDate(now.getDate() - 7);
+          else if (dateRange === "30d") timeLimit.setDate(now.getDate() - 30);
+
+          filteredHistoryData = fullHistoryData.filter((item) => {
+            let safeTimeStr = item.timestamp.trim();
+            if (!safeTimeStr.includes("T"))
+              safeTimeStr = safeTimeStr.replace(/-/g, "/");
+            if (!safeTimeStr.endsWith("Z") && !safeTimeStr.includes("+"))
+              safeTimeStr += "Z";
+            const itemDate = new Date(safeTimeStr);
+            return !isNaN(itemDate.getTime()) && itemDate >= timeLimit;
+          });
+        }
+
+        currentPage = 1;
+        renderECharts(document.getElementById("metric-selector").value);
+        renderTable();
+      }
+
+      function handlePageSizeChange() {
+        pageSize = parseInt(document.getElementById("size-selector").value);
+        currentPage = 1;
+        renderTable();
+      }
+
+      function changePage(direction) {
+        currentPage += direction;
+        renderTable();
+        document.querySelector(".table-container").scrollTop = 0;
+      }
+
+      function renderTable() {
+        const tableBody = document.getElementById("history-table-body");
+        tableBody.innerHTML = "";
+        const displayData = [...filteredHistoryData].reverse();
+        const totalItems = displayData.length;
+        const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = Math.min(startIdx + pageSize, totalItems);
+        const pageData = displayData.slice(startIdx, endIdx);
+
+        pageData.forEach((row) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+                <td>${row.timestamp}</td>
+                <td style="color:#0056b3;font-weight:bold;">${row.polarized_potential}</td>
+                <td>${row.on_potential}</td>
+                <td>${row.ac_current_density.toFixed(2)}</td>
+                <td>${row.dc_current_density.toFixed(2)}</td>
+                <td>${row.specimen_temp}°C</td>
+                <td style="color:#dc3545;font-weight:bold;">${row.corrosion_rate.toFixed(4)}</td>
+                <td><span style="font-size:11px;color:gray;">${row.note}</span></td>
+            `;
+          tableBody.appendChild(tr);
+        });
+
+        document.getElementById("page-info").innerText =
+          `第 ${currentPage} / ${totalPages} 頁 (共 ${totalItems} 筆)`;
+        document.getElementById("btn-prev-page").disabled = currentPage === 1;
+        document.getElementById("btn-next-page").disabled =
+          currentPage === totalPages;
+      }
+
+      function switchChartMetric() {
+        renderECharts(document.getElementById("metric-selector").value);
+      }
+
+      function renderECharts(metric) {
+        if (!echartsInstance) return;
+        if (filteredHistoryData.length === 0) {
+          echartsInstance.clear();
+          return;
+        }
+
+        const timestamps = filteredHistoryData.map((d) => d.timestamp);
+
+        // 🌟 優化：由於已經在 openHistoryModal 中算好最近雨量，這裡只需直接取用 aligned_rain！
+        const alignedRainValues = filteredHistoryData.map(
+          (d) => d.aligned_rain || 0,
+        );
+
+        // 動態計算雨量最大值 (解除 100mm 鎖定，自動適應)
+        const currentMaxRain = Math.max(...alignedRainValues, 0);
+        const dynamicRainMax =
+          currentMaxRain === 0 ? 10 : Math.ceil(currentMaxRain * 1.2);
+
+        const baseOption = {
+          tooltip: {
+            trigger: "axis",
+            backgroundColor: "rgba(255,255,255,0.95)",
+            borderWidth: 1,
+            borderColor: "#ccc",
+            axisPointer: { type: "cross" },
+          },
+          legend: { top: "5%" },
+          grid: {
+            left: "4%",
+            right: "4%",
+            bottom: "12%",
+            top: "20%",
+            containLabel: true,
+          },
+          xAxis: {
+            type: "category",
+            data: timestamps,
+            axisLabel: { color: "#666" },
+          },
+        };
+
+        let option = {};
+        if (metric === "potential") {
+          option = {
+            ...baseOption,
+            yAxis: [
+              {
+                type: "value",
+                name: "電位 (mV)",
+                axisLabel: { formatter: "{value} mV" },
+              },
+              {
+                type: "value",
+                name: "雨量 (mm)",
+                position: "right",
+                splitLine: { show: false },
+                axisLabel: { formatter: "{value} mm" },
+                min: 0,
+                max: dynamicRainMax, // 完全動態抓取最高值
+              },
+            ],
+            series: [
+              {
+                name: "極化電位 (Polarized)",
+                type: "line",
+                data: filteredHistoryData.map((d) => d.polarized_potential),
+                smooth: true,
+                itemStyle: { color: "#007bff" },
+                z: 10,
+              },
+              {
+                name: "通電電位 (On-Potential)",
+                type: "line",
+                data: filteredHistoryData.map((d) => d.on_potential),
+                smooth: true,
+                itemStyle: { color: "#28a745" },
+                z: 10,
+              },
+              {
+                name: "採樣時雨量",
+                type: "bar",
+                yAxisIndex: 1,
+                data: alignedRainValues,
+                itemStyle: { color: "rgba(0, 123, 255, 0.35)" },
+                barMaxWidth: 35,
+                z: 1,
+              },
+            ],
+          };
+        } else if (metric === "current") {
+          option = {
+            ...baseOption,
+            yAxis: [
+              {
+                type: "value",
+                name: "電流密度 (A/m²)",
+                axisLabel: { formatter: "{value} A/m²" },
+              },
+              {
+                type: "value",
+                name: "雨量 (mm)",
+                position: "right",
+                splitLine: { show: false },
+                axisLabel: { formatter: "{value} mm" },
+                min: 0,
+                max: dynamicRainMax,
+              },
+            ],
+            series: [
+              {
+                name: "AC 電流密度",
+                type: "line",
+                data: filteredHistoryData.map((d) => d.ac_current_density),
+                smooth: true,
+                itemStyle: { color: "#fd7e14" },
+                z: 10,
+              },
+              {
+                name: "DC 電流密度",
+                type: "line",
+                data: filteredHistoryData.map((d) => d.dc_current_density),
+                smooth: true,
+                itemStyle: { color: "#6f42c1" },
+                z: 10,
+              },
+              {
+                name: "採樣時雨量",
+                type: "bar",
+                yAxisIndex: 1,
+                data: alignedRainValues,
+                itemStyle: { color: "rgba(0, 123, 255, 0.35)" },
+                barMaxWidth: 35,
+                z: 1,
+              },
+            ],
+          };
+        } else if (metric === "corrosion") {
+          option = {
+            ...baseOption,
+            yAxis: [
+              {
+                type: "value",
+                name: "腐蝕速率 (mm/y)",
+                position: "left",
+                axisLabel: { formatter: "{value} mm/y" },
+              },
+              {
+                type: "value",
+                name: "溫度 (°C)",
+                position: "right",
+                axisLabel: { formatter: "{value} °C" },
+                splitLine: { show: false },
+              },
+            ],
+            series: [
+              {
+                name: "腐蝕速率",
+                type: "bar",
+                data: filteredHistoryData.map((d) => d.corrosion_rate),
+                itemStyle: { color: "#dc3545" },
+                z: 10,
+              },
+              {
+                name: "試片溫度",
+                type: "line",
+                yAxisIndex: 1,
+                data: filteredHistoryData.map((d) => d.specimen_temp),
+                smooth: true,
+                itemStyle: { color: "#ffc107" },
+                z: 10,
+              },
+            ],
+          };
+        }
+
+        echartsInstance.setOption(option, true);
+        echartsInstance.resize();
+      }
+
+      function closeHistoryModal() {
+        document.getElementById("historyModal").style.display = "none";
+      }
+
+      window.addEventListener("resize", () => {
+        if (echartsInstance) echartsInstance.resize();
+      });
+
+      // 宣告全域變數緩存簽名快照
+      let userSignatureBase64 = null;
+
+      /**
+       * 處理本地簽名圖片上傳並轉換為 Base64
+       */
+      function loadSignatureImage(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          userSignatureBase64 = e.target.result;
+          document.getElementById("sig-status").innerText =
+            `✅ 已載入: ${file.name}`;
+          document.getElementById("sig-status").style.color = "#28a745";
+        };
+        reader.readAsDataURL(file);
+      }
+
+      /**
+       * 核心功能：擷取目前 ECharts 圖表並渲染輸出為標準 ISO A4 PDF
+       */
+      function generateA4PDF() {
+        if (!echartsInstance) {
+          alert("錯誤：目前無可用的圖表數據快照。");
+          return;
+        }
+
+        // 1. 初始化 jsPDF (p: 縱向直式, mm: 公釐單位, a4: 標準規格 210mm x 297mm)
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: "p",
+          unit: "mm",
+          format: "a4",
+        });
+
+        // 2. 繪製標準 A4 報表標頭文字與基線
+        doc.setFont("Helvetica", "bold");
+        doc.setFontSize(20);
+        doc.text("Cathodic Protection Monitoring Report", 15, 22);
+
+        doc.setFontSize(10);
+        doc.setFont("Helvetica", "normal");
+        doc.text(`Exported Date: ${new Date().toLocaleString()}`, 15, 30);
+
+        // 繪製美觀的裝飾分割線 (X1, Y1, X2, Y2)
+        doc.setDrawColor(33, 37, 41);
+        doc.setLineWidth(0.5);
+        doc.line(15, 33, 195, 33);
+
+        // 3. 擷取 ECharts 圖表並精確定位壓印
+        // 使用 pixelRatio: 2 導出高解析度網格圖，避免 PDF 放大時字體模糊
+        const chartImgData = echartsInstance.getDataURL({
+          type: "png",
+          pixelRatio: 2,
+          backgroundColor: "#ffffff",
+        });
+
+        // 配合 A4 寬度 (210mm - 左右各邊界15mm = 可用180mm)
+        // 依據黃金比例，將圖表精確佈局在畫布上半部
+        const chartWidth = 180;
+        const chartHeight = 95;
+        doc.addImage(chartImgData, "PNG", 15, 42, chartWidth, chartHeight);
+
+        // 4. 繪製底部裝飾與簽名欄位區塊
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.2);
+        doc.line(15, 245, 195, 245); // 底部制式分隔線
+
+        // 在左下角空白處 (X:15mm, Y:252mm 起算) 繪製簽章
+        if (userSignatureBase64) {
+          // 限制簽名圖檔最大範疇在 45mm 寬、45mm 高，確保不失真且不越界
+          doc.addImage(userSignatureBase64, "PNG", 15, 240, 45, 45);
+
+          doc.setFontSize(9);
+          doc.text("Authorized Signature (Left-Bottom)", 15, 295);
+        } else {
+          // 若尚未選取簽名，則貼心標註虛線框提示
+          doc.setFontSize(9);
+          doc.text("Authorized Signature: _______________________", 15, 265);
+          doc.setFontSize(8);
+          doc.text("(No signature image uploaded prior to printing)", 15, 270);
+        }
+
+        // 5. 觸發瀏覽器下載 PDF 檔案
+        const timestamp = new Date().toISOString().slice(0, 10);
+        doc.save(`CP_Monitor_Report_${timestamp}.pdf`);
+      }
+    </script>
+  </body>
+</html>
