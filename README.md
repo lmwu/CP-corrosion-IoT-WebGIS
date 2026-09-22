@@ -1,3 +1,3 @@
 # 台灣陰極防蝕領域腐蝕監測物聯網第一支 WebGIS 。
-歡迎下載試用。
-<br>Go TOV, beat GOAT!
+歡迎下載試用。 
+<br>Go TOV, beat GOAT! !!!請不要拿我的成果去擅自加工後製偽證!!!
